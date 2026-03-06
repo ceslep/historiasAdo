@@ -59,13 +59,19 @@
     if (cleanupStore) cleanupStore();
   });
 
+  function tieneComodines(texto: string): boolean {
+    return texto.includes('*') || texto.includes('?');
+  }
+
   $effect(() => {
-    if (query.length >= 3 || query.length === 0) {
-      resultados = buscarPacientes(
-        pacientes as Paciente[],
-        query,
-        filtroEstado,
-      );
+    const usaComodines = tieneComodines(query);
+    const sinComodines = query.replace(/[*?]/g, '');
+    if (query.length === 0) {
+      resultados = buscarPacientes(pacientes as Paciente[], query, filtroEstado);
+    } else if (usaComodines && sinComodines.length >= 1) {
+      resultados = buscarPacientes(pacientes as Paciente[], query, filtroEstado);
+    } else if (query.length >= 3) {
+      resultados = buscarPacientes(pacientes as Paciente[], query, filtroEstado);
     } else {
       resultados = [];
     }
@@ -237,7 +243,7 @@
             <p class="mt-2 max-w-xs text-sm text-slate-500 leading-relaxed">
               Escribe al menos <span class="font-semibold text-blue-600"
                 >3 caracteres</span
-              > en el campo de búsqueda para encontrar pacientes.
+              > o usa comodines (<span class="font-mono font-semibold text-blue-600">*</span> y <span class="font-mono font-semibold text-blue-600">?</span>) para buscar.
             </p>
             <div class="mt-8 flex gap-3">
               <div
@@ -260,7 +266,7 @@
               </div>
             </div>
           </div>
-        {:else if query.length < 3}
+        {:else if query.length < 3 && !tieneComodines(query)}
           <!-- Min chars hint -->
           <div
             class="animate-fade-in flex flex-col items-center justify-center py-20 text-center"

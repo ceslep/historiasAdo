@@ -40,11 +40,19 @@
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
   let isFocused = $state(false);
 
+  function tieneComodines(texto: string): boolean {
+    return texto.includes('*') || texto.includes('?');
+  }
+
   function handleInput(e: Event) {
     const target = e.target as HTMLInputElement;
     inputValue = target.value;
     if (debounceTimer) clearTimeout(debounceTimer);
-    if (inputValue.length >= 3) {
+    const usaComodines = tieneComodines(inputValue);
+    const sinComodines = inputValue.replace(/[*?]/g, '');
+    if (usaComodines && sinComodines.length >= 1) {
+      debounceTimer = setTimeout(() => onQueryChange(inputValue), 300);
+    } else if (inputValue.length >= 3) {
       debounceTimer = setTimeout(() => onQueryChange(inputValue), 300);
     } else if (inputValue.length === 0) {
       onQueryChange("");
@@ -87,7 +95,7 @@
       oninput={handleInput}
       onfocus={() => (isFocused = true)}
       onblur={() => (isFocused = false)}
-      placeholder="Buscar paciente – nombre, identificación, historia..."
+      placeholder="Buscar paciente – usa * y ? como comodines"
       class="w-full rounded-2xl border-1.5 bg-white py-3.5 pl-12 pr-12 text-sm text-slate-900 placeholder-slate-400 outline-none transition-all duration-300
         {isFocused
         ? 'border-blue-400 bg-white'
@@ -96,7 +104,7 @@
     />
 
     <!-- Right: min-chars hint OR clear button -->
-    {#if inputValue.length > 0 && inputValue.length < 3}
+    {#if inputValue.length > 0 && inputValue.length < 3 && !tieneComodines(inputValue)}
       <div class="absolute inset-y-0 right-4 flex items-center">
         <span
           class="flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/60 px-2.5 py-0.5 text-xs font-semibold text-amber-600 shadow-sm"
@@ -105,7 +113,7 @@
           +{3 - inputValue.length}
         </span>
       </div>
-    {:else if inputValue.length >= 3}
+    {:else if inputValue.length >= 3 || tieneComodines(inputValue)}
       <button
         onclick={clearInput}
         class="absolute inset-y-0 right-4 flex items-center text-slate-400 hover:text-slate-600 transition-all"

@@ -86,22 +86,34 @@ export async function cargarPacientes(): Promise<Paciente[]> {
   return pacientesCache;
 }
 
+function tieneComodines(texto: string): boolean {
+  return texto.includes('*') || texto.includes('?');
+}
+
+function comodinARegex(patron: string): RegExp {
+  const escaped = patron.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+  const regexStr = escaped.replace(/\*/g, '.*').replace(/\?/g, '.');
+  return new RegExp(regexStr);
+}
+
 export function buscarPacientes(
   pacientes: Paciente[],
   query: string,
   estadoFiltro: 'todos' | 'ACTIVO' | 'INACTIVO' = 'todos'
 ): Paciente[] {
   const queryNormalizada = normalizarTexto(query);
-  
+  const usaComodines = tieneComodines(queryNormalizada);
+
   return pacientes.filter((paciente) => {
     if (estadoFiltro !== 'todos' && paciente.estado !== estadoFiltro) {
       return false;
     }
-    
-    if (queryNormalizada.length < 3) {
+
+    const sinComodines = queryNormalizada.replace(/[*?]/g, '');
+    if (sinComodines.length < 1) {
       return false;
     }
-    
+
     const camposBusqueda = [
       paciente.nombres,
       paciente.nombre1,
@@ -112,8 +124,17 @@ export function buscarPacientes(
       paciente.telefono_residencia1,
       paciente.email1,
     ];
-    
-    return camposBusqueda.some((campo) => 
+
+    if (usaComodines) {
+      const regex = comodinARegex(queryNormalizada);
+      return camposBusqueda.some((campo) => regex.test(normalizarTexto(campo)));
+    }
+
+    if (queryNormalizada.length < 3) {
+      return false;
+    }
+
+    return camposBusqueda.some((campo) =>
       normalizarTexto(campo).includes(queryNormalizada)
     );
   });
