@@ -86,7 +86,10 @@
 {:else}
   <div class="animate-fade-in grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
     {#each pacientes as paciente, i (paciente.ind)}
-      <div style="animation: fade-in 0.35s var(--ease-smooth) both; animation-delay: {Math.min(i * 0.04, 0.4)}s;">
+      <div
+        data-tour={i === 0 ? "patient-card" : undefined}
+        style="animation: fade-in 0.35s var(--ease-smooth) both; animation-delay: {Math.min(i * 0.04, 0.4)}s;"
+      >
         <PatientCard
           {paciente}
           {camposVisibles}

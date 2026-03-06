@@ -8,10 +8,11 @@
   import HistorialModal from "./lib/components/historial-modal.svelte";
   import LoadingScreen from "./lib/components/loading-screen.svelte";
   import OfflineStatus from "./lib/components/offline-status.svelte";
+  import OnboardingTour from "./lib/components/onboarding-tour.svelte";
   import { buscarPacientes } from "./lib/services/pacienteService";
   import { pacienteStore } from "./lib/stores/pacienteStore.svelte";
   import type { Paciente } from "./lib/types/paciente";
-  import { Search, AlertCircle, Sparkles } from "lucide-svelte";
+  import { Search, AlertCircle, Sparkles, HelpCircle } from "lucide-svelte";
 
   const logoUrl = `${import.meta.env.BASE_URL}icons.png`;
 
@@ -29,6 +30,32 @@
   // Historial State
   let isHistorialOpen = $state(false);
   let historialPaciente = $state<{ id: string; nombre: string } | null>(null);
+
+  // Onboarding tour (show max 3 times)
+  const ONBOARDING_KEY = "historiasado_onboarding_count";
+  let showOnboarding = $state(false);
+
+  function getOnboardingCount(): number {
+    try {
+      return parseInt(localStorage.getItem(ONBOARDING_KEY) ?? "0", 10) || 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  function completeOnboarding() {
+    try {
+      const count = getOnboardingCount();
+      localStorage.setItem(ONBOARDING_KEY, String(count + 1));
+    } catch { /* noop */ }
+    showOnboarding = false;
+    // Reset search state after tour ends
+    query = "";
+  }
+
+  function handleTourSearch(q: string) {
+    query = q;
+  }
 
   let camposSeleccionados = $state<string[]>([
     "historia",
@@ -51,6 +78,9 @@
       if (!pacienteStore.isLoading) {
         isLoading = false;
         clearInterval(checkLoading);
+        if (getOnboardingCount() < 3) {
+          showOnboarding = true;
+        }
       }
     }, 100);
   });
@@ -174,20 +204,30 @@
           </div>
         </div>
 
-        <!-- Right: selection chip -->
-        {#if seleccionadosCount > 0}
-          <button
-            onclick={() => (isSidebarOpen = true)}
-            class="hidden sm:flex items-center gap-2 rounded-full bg-blue-50 border border-blue-200 px-3 py-1.5 text-xs font-semibold text-blue-700 shadow-sm transition-colors hover:bg-blue-100"
-          >
-            <span
-              class="flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white"
+        <!-- Right: selection chip + help -->
+        <div class="flex items-center gap-2">
+          {#if seleccionadosCount > 0}
+            <button
+              onclick={() => (isSidebarOpen = true)}
+              class="hidden sm:flex items-center gap-2 rounded-full bg-blue-50 border border-blue-200 px-3 py-1.5 text-xs font-semibold text-blue-700 shadow-sm transition-colors hover:bg-blue-100"
             >
-              {seleccionadosCount}
-            </span>
-            seleccionado{seleccionadosCount !== 1 ? "s" : ""}
+              <span
+                class="flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white"
+              >
+                {seleccionadosCount}
+              </span>
+              seleccionado{seleccionadosCount !== 1 ? "s" : ""}
+            </button>
+          {/if}
+          <button
+            onclick={() => (showOnboarding = true)}
+            class="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-400 shadow-sm transition-all hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 hover:shadow-md active:scale-95"
+            aria-label="Ayuda - Ver tutorial"
+            title="Ver tutorial"
+          >
+            <HelpCircle class="h-4 w-4" />
           </button>
-        {/if}
+        </div>
       </div>
     </header>
 
@@ -225,6 +265,7 @@
         {#if query.length === 0}
           <!-- Empty / welcome state -->
           <div
+            data-tour="area-resultados"
             class="animate-fade-in flex flex-col items-center justify-center py-24 text-center"
           >
             <div class="relative mb-6">
@@ -331,5 +372,9 @@
       bind:isOpen={isHistorialOpen}
       onClose={() => {}}
     />
+  {/if}
+
+  {#if showOnboarding}
+    <OnboardingTour onComplete={completeOnboarding} onSearch={handleTourSearch} />
   {/if}
 {/if}

@@ -40,6 +40,11 @@
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
   let isFocused = $state(false);
 
+  // Sync inputValue when query changes externally (e.g. onboarding tour)
+  $effect(() => {
+    inputValue = query;
+  });
+
   function tieneComodines(texto: string): boolean {
     return texto.includes('*') || texto.includes('?');
   }
@@ -74,6 +79,7 @@
 <div class="space-y-3">
   <!-- Search input card -->
   <div
+    data-tour="search-input"
     class="relative rounded-2xl transition-all duration-300 {isFocused
       ? 'ring-4 ring-blue-500/10 shadow-lg shadow-blue-200/30'
       : 'shadow-sm'}"
@@ -131,7 +137,7 @@
   <!-- Filters + Actions row -->
   <div class="flex flex-wrap items-center gap-2">
     <!-- Estado pill tabs -->
-    <div class="flex items-center rounded-xl bg-slate-100/80 p-1 gap-0.5 border border-slate-200/60">
+    <div data-tour="filtros-estado" class="flex items-center rounded-xl bg-slate-100/80 p-1 gap-0.5 border border-slate-200/60">
       {#each filtros as filtro}
         <button
           onclick={() => onFiltroChange(filtro.value)}
@@ -189,6 +195,7 @@
 
     <!-- Columns picker -->
     <button
+      data-tour="columnas-btn"
       onclick={onOpenFieldSelector}
       class="flex items-center gap-1.5 rounded-xl border border-slate-200/80 bg-white px-3 py-2 text-xs font-semibold text-slate-600 shadow-sm transition-all hover:bg-slate-50 hover:border-slate-300 hover:shadow-md hover:scale-105 active:scale-95"
     >
