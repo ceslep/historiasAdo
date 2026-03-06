@@ -81,10 +81,10 @@
       beforeShow: () => onSearch(DEMO_QUERY),
     },
     {
-      target: "patient-card",
+      target: "historial-btn",
       title: "Ver historial clinico",
       description:
-        'Cada tarjeta tiene el boton "Historial" abajo a la derecha. Pulsa para ver citas, abonos, saldos y pagos del paciente.',
+        'Este boton abre el historial completo del paciente: citas, abonos, saldos y pagos.',
       tip: "El historial se consulta en linea desde el servidor del consultorio.",
       color: "rose",
       position: "auto",

@@ -253,6 +253,7 @@
       </div>
 
       <button
+        data-tour="historial-btn"
         onclick={(e) => {
           e.stopPropagation();
           onOpenHistorial?.(historiaValue, getValue("nombres"));
