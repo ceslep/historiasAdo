@@ -10,9 +10,11 @@
   import OfflineStatus from "./lib/components/offline-status.svelte";
   import DbStatusModal from "./lib/components/db-status-modal.svelte";
   import OnboardingTour from "./lib/components/onboarding-tour.svelte";
+  import UsageModal from "./lib/components/usage-modal.svelte";
   import { pacienteStore } from "./lib/stores/pacienteStore.svelte";
+  import { usageStore } from "./lib/stores/usageStore.svelte";
   import type { Paciente } from "./lib/types/paciente";
-  import { Search, AlertCircle, Sparkles, HelpCircle, Database } from "lucide-svelte";
+  import { Search, AlertCircle, Sparkles, HelpCircle, Database, Activity } from "lucide-svelte";
 
   const logoUrl = `${import.meta.env.BASE_URL}icons.png`;
 
@@ -40,6 +42,7 @@
 
   // DB Status modal
   let isDbStatusOpen = $state(false);
+  let isUsageModalOpen = $state(false);
 
   // Onboarding tour (show max 3 times)
   const ONBOARDING_KEY = "historiasado_onboarding_count";
@@ -110,6 +113,7 @@
       searchTimeout = setTimeout(async () => {
         try {
           const res = await pacienteStore.buscar(query);
+          usageStore.trackSearch();
           resultados = res;
           const next = new Map(pacientesVistos);
           for (const p of res) next.set(p.ind, p);
@@ -161,6 +165,7 @@
   function handleGenerarPDF(blob: Blob) {
     pdfBlob = blob;
     isPdfModalOpen = true;
+    usageStore.trackPdfExport();
   }
 
   function handleClosePdfModal() {
@@ -171,6 +176,7 @@
   function handleOpenHistorial(id: string, nombre: string) {
     historialPaciente = { id, nombre };
     isHistorialOpen = true;
+    usageStore.trackHistoryView();
   }
 </script>
 
@@ -400,6 +406,16 @@
     </div>
   </div>
 
+  <!-- Floating Action Button (Usage) -->
+  <button
+    onclick={() => (isUsageModalOpen = true)}
+    class="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 transition-all hover:scale-105 hover:bg-indigo-700 active:scale-95"
+    aria-label="Ver uso de la aplicación"
+    title="Ver uso de la aplicación"
+  >
+    <Activity class="h-6 w-6" />
+  </button>
+
   <!-- Modals -->
   <FieldSelectorModal
     bind:isOpen={isModalOpen}
@@ -427,6 +443,8 @@
   {/if}
 
   <DbStatusModal bind:isOpen={isDbStatusOpen} onClose={() => (isDbStatusOpen = false)} />
+
+  <UsageModal bind:isOpen={isUsageModalOpen} onClose={() => (isUsageModalOpen = false)} />
 
   {#if showOnboarding}
     <OnboardingTour onComplete={completeOnboarding} onSearch={handleTourSearch} />
