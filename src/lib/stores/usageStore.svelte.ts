@@ -5,8 +5,6 @@ export interface UsageStats {
   lastActive: number | null;
 }
 
-const STORAGE_KEY = 'historiasado_usage_stats';
-
 const defaultStats: UsageStats = {
   searchCount: 0,
   pdfExportCount: 0,
@@ -14,33 +12,49 @@ const defaultStats: UsageStats = {
   lastActive: null,
 };
 
-function loadStats(): UsageStats {
+// Use the base URL for the API
+const API_URL = 'https://app.iedeoccidente.com/ado/usage.php';
+
+let statsState = $state<UsageStats>(defaultStats);
+let isInitializing = false;
+
+async function loadStats() {
+  if (isInitializing) return;
+  isInitializing = true;
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) return defaultStats;
-    const parsed = JSON.parse(stored);
-    return { ...defaultStats, ...parsed };
+    const response = await fetch(API_URL);
+    if (response.ok) {
+      const data = await response.json();
+      statsState = { ...defaultStats, ...data };
+    }
   } catch (err) {
-    console.error('Error loading usage stats from localStorage', err);
-    return defaultStats;
+    console.error('Error loading usage stats from API', err);
+  } finally {
+    isInitializing = false;
   }
 }
 
-function saveStats(stats: UsageStats) {
+async function sendAction(action: 'trackSearch' | 'trackPdfExport' | 'trackHistoryView' | 'resetStats') {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(stats));
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ action }),
+    });
+    
+    if (response.ok) {
+        const data = await response.json();
+        statsState = { ...defaultStats, ...data };
+    }
   } catch (err) {
-    console.error('Error saving usage stats to localStorage', err);
+    console.error('Error sending usage action to API', err);
   }
 }
 
-let statsState = $state<UsageStats>(loadStats());
-
-function updateStats(updater: (stats: UsageStats) => Partial<UsageStats>) {
-  const updates = updater(statsState);
-  statsState = { ...statsState, ...updates, lastActive: Date.now() };
-  saveStats(statsState);
-}
+// Initial load
+loadStats();
 
 export const usageStore = {
   get stats() {
@@ -48,19 +62,30 @@ export const usageStore = {
   },
 
   trackSearch() {
-    updateStats((s) => ({ searchCount: s.searchCount + 1 }));
+    // Optimistic UI update
+    statsState.searchCount++;
+    statsState.lastActive = Date.now();
+    sendAction('trackSearch');
   },
 
   trackPdfExport() {
-    updateStats((s) => ({ pdfExportCount: s.pdfExportCount + 1 }));
+    statsState.pdfExportCount++;
+    statsState.lastActive = Date.now();
+    sendAction('trackPdfExport');
   },
 
   trackHistoryView() {
-    updateStats((s) => ({ historyViewCount: s.historyViewCount + 1 }));
+    statsState.historyViewCount++;
+    statsState.lastActive = Date.now();
+    sendAction('trackHistoryView');
   },
 
   resetStats() {
     statsState = { ...defaultStats, lastActive: Date.now() };
-    saveStats(statsState);
+    sendAction('resetStats');
+  },
+  
+  refresh() {
+    loadStats();
   }
 };
