@@ -8,14 +8,16 @@
   import HistorialModal from "./lib/components/historial-modal.svelte";
   import LoadingScreen from "./lib/components/loading-screen.svelte";
   import OfflineStatus from "./lib/components/offline-status.svelte";
+  import DbStatusModal from "./lib/components/db-status-modal.svelte";
   import OnboardingTour from "./lib/components/onboarding-tour.svelte";
   import { pacienteStore } from "./lib/stores/pacienteStore.svelte";
   import type { Paciente } from "./lib/types/paciente";
-  import { Search, AlertCircle, Sparkles, HelpCircle } from "lucide-svelte";
+  import { Search, AlertCircle, Sparkles, HelpCircle, Database } from "lucide-svelte";
 
   const logoUrl = `${import.meta.env.BASE_URL}icons.png`;
 
   let resultados = $state<Paciente[]>([]);
+  let pacientesVistos = $state<Map<string, Paciente>>(new Map());
   let isLoading = $state(true);
   let query = $state("");
   let filtroEstado = $state<"todos" | "ACTIVO" | "INACTIVO">("todos");
@@ -35,6 +37,9 @@
   // Historial State
   let isHistorialOpen = $state(false);
   let historialPaciente = $state<{ id: string; nombre: string } | null>(null);
+
+  // DB Status modal
+  let isDbStatusOpen = $state(false);
 
   // Onboarding tour (show max 3 times)
   const ONBOARDING_KEY = "historiasado_onboarding_count";
@@ -68,10 +73,9 @@
     "tipo",
   ]);
 
-  const pacientes = $derived(pacienteStore.pacientes);
   const seleccionadosCount = $derived(seleccionados.size);
   const pacientesSeleccionados = $derived(
-    pacientes.filter((p) => seleccionados.has(p.ind)),
+    [...seleccionados].map((ind) => pacientesVistos.get(ind)).filter((p): p is Paciente => !!p),
   );
 
   let cleanupStore: (() => void) | undefined;
@@ -105,7 +109,11 @@
       isSearching = true;
       searchTimeout = setTimeout(async () => {
         try {
-          resultados = await pacienteStore.buscar(query);
+          const res = await pacienteStore.buscar(query);
+          resultados = res;
+          const next = new Map(pacientesVistos);
+          for (const p of res) next.set(p.ind, p);
+          pacientesVistos = next;
         } catch (error) {
           console.error('Search error:', error);
           resultados = [];
@@ -210,7 +218,7 @@
               ></span>
             </span>
             <span class="text-xs font-semibold text-slate-600">
-              {pacientes.length.toLocaleString("es-CO")} pacientes
+              {resultados.length.toLocaleString("es-CO")} resultados
             </span>
           </div>
         </div>
@@ -230,6 +238,14 @@
               seleccionado{seleccionadosCount !== 1 ? "s" : ""}
             </button>
           {/if}
+          <button
+            onclick={() => (isDbStatusOpen = true)}
+            class="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-400 shadow-sm transition-all hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 hover:shadow-md active:scale-95"
+            aria-label="Estado de la base de datos"
+            title="Estado offline / IndexedDB"
+          >
+            <Database class="h-4 w-4" />
+          </button>
           <button
             onclick={() => (showOnboarding = true)}
             class="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-400 shadow-sm transition-all hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 hover:shadow-md active:scale-95"
@@ -305,19 +321,17 @@
                 class="flex flex-col items-center gap-1 rounded-2xl border border-slate-200 bg-white px-5 py-3 shadow-sm"
               >
                 <span class="text-xl font-bold text-slate-800"
-                  >{pacientes.length.toLocaleString("es-CO")}</span
+                  >{pacienteStore.dbStats.total.toLocaleString("es-CO")}</span
                 >
-                <span class="text-xs text-slate-500">Pacientes totales</span>
+                <span class="text-xs text-slate-500">Pacientes en DB local</span>
               </div>
               <div
                 class="flex flex-col items-center gap-1 rounded-2xl border border-slate-200 bg-white px-5 py-3 shadow-sm"
               >
                 <span class="text-xl font-bold text-emerald-600">
-                  {pacientes
-                    .filter((p) => p.estado === "ACTIVO")
-                    .length.toLocaleString("es-CO")}
+                  {pacienteStore.dbStats.synced.toLocaleString("es-CO")}
                 </span>
-                <span class="text-xs text-slate-500">Activos</span>
+                <span class="text-xs text-slate-500">Sincronizados</span>
               </div>
             </div>
           </div>
@@ -411,6 +425,8 @@
       onClose={() => {}}
     />
   {/if}
+
+  <DbStatusModal bind:isOpen={isDbStatusOpen} onClose={() => (isDbStatusOpen = false)} />
 
   {#if showOnboarding}
     <OnboardingTour onComplete={completeOnboarding} onSearch={handleTourSearch} />

@@ -5,7 +5,10 @@ import {
   bulkSavePacientes, 
   getPacientesCount,
   clearAllPacientes,
-  type PacienteSync 
+  getDBStats,
+  getUnsyncedCount,
+  type PacienteSync,
+  type DBStats 
 } from '../db/db';
 import type { Paciente } from '../types/paciente';
 
@@ -15,6 +18,7 @@ let isLoadingState = $state(false);
 let isSearchingOnlineState = $state(true);
 let isSyncingState = $state(false);
 let errorState = $state<string | null>(null);
+let dbStatsState = $state<DBStats>({ total: 0, synced: 0, pending: 0, deleted: 0 });
 
 function updateOnlineStatus() {
   isOnlineState = isBrowser ? navigator.onLine : true;
@@ -68,28 +72,37 @@ function mapPacienteToSync(paciente: Paciente): PacienteSync {
 
 async function sincronizarDatosLocales(): Promise<void> {
   if (!isBrowser || !navigator.onLine) return;
-  
+
   try {
     isSyncingState = true;
-    
+
     const localCount = await getPacientesCount();
-    
-    if (localCount === 0) {
-      console.log('Sincronizando pacientes con IndexedDB...');
-      const todosPacientes = await cargarPacientes();
-      
-      if (todosPacientes.length > 0) {
-        const pacientesSync = todosPacientes.map(mapPacienteToSync);
-        await bulkSavePacientes(pacientesSync);
-        console.log(`Sincronizados ${todosPacientes.length} pacientes a IndexedDB`);
-      }
-    } else {
-      console.log(`IndexedDB ya tiene ${localCount} pacientes`);
+    console.log(`IndexedDB tiene ${localCount} pacientes, descargando datos remotos...`);
+
+    const todosPacientes = await cargarPacientes();
+
+    if (todosPacientes.length > 0 && todosPacientes.length !== localCount) {
+      console.log(`Sincronizando ${todosPacientes.length} pacientes (local: ${localCount})...`);
+      const pacientesSync = todosPacientes.map(mapPacienteToSync);
+      await bulkSavePacientes(pacientesSync);
+      console.log(`Sincronizados ${todosPacientes.length} pacientes a IndexedDB`);
+    } else if (todosPacientes.length === localCount) {
+      console.log(`IndexedDB ya está sincronizado (${localCount} pacientes)`);
     }
+
+    await actualizarStats();
   } catch (error) {
     console.error('Error sincronizando datos locales:', error);
   } finally {
     isSyncingState = false;
+  }
+}
+
+async function actualizarStats(): Promise<void> {
+  try {
+    dbStatsState = await getDBStats();
+  } catch (error) {
+    console.error('Error actualizando stats:', error);
   }
 }
 
@@ -164,8 +177,9 @@ function inicializarStore(): () => void {
   if (isBrowser) {
     window.addEventListener('online', updateOnlineStatus);
     window.addEventListener('offline', updateOnlineStatus);
-    
+
     sincronizarDatosLocales();
+    actualizarStats();
   }
 
   return () => {
@@ -195,9 +209,16 @@ export const pacienteStore = {
   get error() {
     return errorState;
   },
-  
+  get dbStats() {
+    return dbStatsState;
+  },
+  get pendingSyncCount() {
+    return dbStatsState.pending;
+  },
+
   inicializar: inicializarStore,
   buscar: buscarPacientes,
   recargar: recargarDatos,
   sincronizar: sincronizarDatosLocales,
+  actualizarStats,
 };

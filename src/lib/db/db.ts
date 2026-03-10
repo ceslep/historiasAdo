@@ -135,13 +135,33 @@ export async function getUnsyncedCount(): Promise<number> {
   return db.pacientes.filter((p) => !p.synced).count();
 }
 
+export async function getDeletedCount(): Promise<number> {
+  return db.pacientes.filter((p) => p.deleted).count();
+}
+
+export interface DBStats {
+  total: number;
+  synced: number;
+  pending: number;
+  deleted: number;
+}
+
+export async function getDBStats(): Promise<DBStats> {
+  const [total, synced, pending, deleted] = await Promise.all([
+    db.pacientes.count(),
+    db.pacientes.filter((p) => p.synced && !p.deleted).count(),
+    db.pacientes.filter((p) => !p.synced && !p.deleted).count(),
+    db.pacientes.filter((p) => p.deleted).count(),
+  ]);
+  return { total, synced, pending, deleted };
+}
+
 export async function buscarPacientesLocal(query: string, maxResults = 50): Promise<PacienteSync[]> {
   const q = query.trim().toLowerCase();
   if (!q) return [];
 
   const allPacientes = await db.pacientes
     .filter((p) => !p.deleted)
-    .limit(maxResults * 2)
     .toArray();
 
   const results: PacienteSync[] = [];

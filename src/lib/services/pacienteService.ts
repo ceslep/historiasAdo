@@ -107,7 +107,17 @@ export async function cargarPacientes(): Promise<Paciente[]> {
     if (!response.ok) {
       throw new Error(`Error fetching: ${response.status}`);
     }
-    const rawData = await response.json() as PacienteJson[];
+    const text = await response.text();
+    let rawData: PacienteJson[];
+    try {
+      rawData = JSON.parse(text) as PacienteJson[];
+    } catch {
+      // API returns NDJSON (one JSON object per line)
+      rawData = text
+        .split('\n')
+        .filter((line) => line.trim())
+        .map((line) => JSON.parse(line) as PacienteJson);
+    }
     pacientesCache = extraerPacientes(rawData);
     return pacientesCache;
   } catch (error) {
