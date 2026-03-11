@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { X, Calendar, CreditCard, DollarSign, FileText, Loader2, AlertCircle, RefreshCw, CheckCircle, XCircle, Clock } from 'lucide-svelte';
+  import { X, Calendar, CreditCard, DollarSign, FileText, Loader2, AlertCircle, RefreshCw, CheckCircle, XCircle, Clock, WifiOff, Wifi } from 'lucide-svelte';
   import type { Cita, Abono, Saldo, Pago } from '../types/historial';
-  import { fetchHistorial } from '../services/historialService';
+  import { fetchHistorialConCache } from '../services/historialService';
 
   interface Props {
     historia: string;
@@ -16,6 +16,8 @@
   let loading = $state(true);
   let error = $state<string | null>(null);
   let historialData = $state<{ citas: Cita[]; abonos: Abono[]; saldos: Saldo[]; pagos: Pago[] } | null>(null);
+  let dataSource = $state<'api' | 'cache' | 'none'>('none');
+  let cachedAt = $state<Date | null>(null);
 
   const tabs = [
     { id: 'citas', label: 'Citas', icon: Calendar, color: 'from-blue-500 to-indigo-500', activeBg: 'bg-blue-50', activeText: 'text-blue-700', countBg: 'bg-blue-100 text-blue-700' },
@@ -66,15 +68,26 @@
 
   async function loadHistorial() {
     try {
-      const response = await fetchHistorial(historia);
-      if (response.results && response.results.length > 0) {
-        historialData = response.results[0].data;
+      const result = await fetchHistorialConCache(historia);
+      historialData = result.data;
+      dataSource = result.source;
+      cachedAt = result.cachedAt;
+      if (result.source === 'none') {
+        error = 'No hay datos disponibles (sin conexión y sin cache local)';
       }
     } catch (e) {
       error = e instanceof Error ? e.message : 'Error al cargar el historial';
     } finally {
       loading = false;
     }
+  }
+
+  function formatCacheDate(date: Date | null): string {
+    if (!date) return '';
+    return new Intl.DateTimeFormat('es-CO', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    }).format(date);
   }
 
   function handleClose() {
@@ -136,7 +149,20 @@
                 #{historia}
               </span>
             </div>
-            <p class="text-sm text-slate-500 mt-0.5">{nombrePaciente}</p>
+            <div class="flex items-center gap-2 mt-0.5">
+              <p class="text-sm text-slate-500">{nombrePaciente}</p>
+              {#if !loading && dataSource === 'cache'}
+                <span class="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200/60 px-2 py-0.5 text-[10px] font-semibold text-amber-700" title="Datos desde cache local: {formatCacheDate(cachedAt)}">
+                  <WifiOff class="h-3 w-3" />
+                  Offline · {formatCacheDate(cachedAt)}
+                </span>
+              {:else if !loading && dataSource === 'api'}
+                <span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200/60 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+                  <Wifi class="h-3 w-3" />
+                  En línea
+                </span>
+              {/if}
+            </div>
           </div>
         </div>
         <button

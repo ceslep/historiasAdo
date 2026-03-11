@@ -1,4 +1,5 @@
 import Dexie, { type Table } from 'dexie';
+import type { Cita, Abono, Saldo, Pago } from '../types/historial';
 
 export interface PacienteSync {
   ind: string;
@@ -45,8 +46,18 @@ export interface PacienteSync {
   deleted?: boolean;
 }
 
+export interface HistorialCache {
+  historia: string;
+  citas: Cita[];
+  abonos: Abono[];
+  saldos: Saldo[];
+  pagos: Pago[];
+  updatedAt: Date;
+}
+
 export class HistoriasDB extends Dexie {
   pacientes!: Table<PacienteSync, string>;
+  historial!: Table<HistorialCache, string>;
 
   constructor() {
     super('HistoriasDB');
@@ -55,6 +66,10 @@ export class HistoriasDB extends Dexie {
     });
     this.version(2).stores({
       pacientes: 'ind, synced, updatedAt, estado, identificacion, historia, nombres',
+    });
+    this.version(3).stores({
+      pacientes: 'ind, synced, updatedAt, estado, identificacion, historia, nombres',
+      historial: 'historia, updatedAt',
     });
   }
 }
@@ -210,4 +225,22 @@ export async function buscarPacientesLocal(query: string, maxResults = 50): Prom
   }
 
   return results;
+}
+
+// ========== Historial Cache ==========
+
+export async function getHistorialCache(historia: string): Promise<HistorialCache | undefined> {
+  return db.historial.get(historia);
+}
+
+export async function saveHistorialCache(cache: HistorialCache): Promise<void> {
+  await db.historial.put(cache);
+}
+
+export async function clearHistorialCache(): Promise<void> {
+  await db.historial.clear();
+}
+
+export async function getHistorialCacheCount(): Promise<number> {
+  return db.historial.count();
 }
