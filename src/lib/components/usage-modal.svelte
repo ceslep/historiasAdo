@@ -1,6 +1,12 @@
 <script lang="ts">
   import { X, Activity, Search, FileText, History, RotateCcw } from "lucide-svelte";
   import { usageStore } from "../stores/usageStore.svelte";
+  import { APP_VERSION, APP_BUILD_DATE } from "../version";
+
+  const buildDate = new Intl.DateTimeFormat("es-CO", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(APP_BUILD_DATE));
 
   interface Props {
     isOpen: boolean;
@@ -128,6 +134,13 @@
             <RotateCcw class="h-3.5 w-3.5" />
             Reiniciar
           </button>
+        </div>
+
+        <!-- Versión -->
+        <div class="mt-4 border-t border-slate-100 pt-3">
+          <p class="text-[11px] text-slate-400">
+            v{APP_VERSION} · Build: {buildDate}
+          </p>
         </div>
       </div>
     </div>

@@ -5,6 +5,9 @@ import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig({
   base: "/historiasAdo/",
+  define: {
+    __BUILD_DATE__: JSON.stringify(new Date().toISOString()),
+  },
   build: {
     chunkSizeWarningLimit: 2500,
     rollupOptions: {
@@ -54,6 +57,8 @@ export default defineConfig({
         ],
       },
       workbox: {
+        skipWaiting: true,
+        clientsClaim: true,
         globPatterns: ["**/*.{js,css,html,svg,png,woff,woff2}"],
         globIgnores: ['node_modules/**/*', '**/paciente.json'],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,

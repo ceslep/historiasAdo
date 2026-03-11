@@ -12,7 +12,13 @@ npm run preview      # Preview production build locally
 npm run check        # Type checking (svelte-check + tsc)
 npm run deploy       # GitHub Pages
 
-No test framework is currently configured. For testing, add Vitest or Playwright.
+# Testing (Vitest recommended - not yet configured)
+# To add tests: npm install -D vitest @testing-library/svelte jsdom
+# npm run test         # Run all tests
+# npm run test run     # Run tests once (CI mode)
+# npm run test -- path # Run specific test file
+# npm run test -- --watch # Watch mode
+```
 
 ## Code Style
 
@@ -154,6 +160,11 @@ try {
 - **Tailwind not working**: Verify `@import "tailwindcss";` in `app.css`
 - **Base URL**: `/historiasAdo/` in `vite.config.ts`
 - **PWA not updating**: Clear service worker cache or increment version in `vite.config.ts`
+
+## Debugging
+- Use `$inspect` rune for debugging (dev only): `$inspect(count)`
+- Check IndexedDB data in browser DevTools > Application > IndexedDB > HistoriasDB
+- Service worker: DevTools > Application > Service Workers
 
 ## Git Conventions
 Use conventional commits: `feat:`, `fix:`, `docs:`, `refactor:`, `chore:`.
