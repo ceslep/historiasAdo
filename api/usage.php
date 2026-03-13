@@ -165,7 +165,30 @@ function logSession(string $sessionsFile, array $data): void {
         'maxTouchPoints' => $clientInfo['maxTouchPoints'] ?? null,
         'connection' => $clientInfo['connection'] ?? null,
         'standalone' => $clientInfo['standalone'] ?? null,
+        // Client geolocation (if user granted permission)
+        'geoLat' => $clientInfo['geoLat'] ?? null,
+        'geoLon' => $clientInfo['geoLon'] ?? null,
+        'geoAccuracy' => $clientInfo['geoAccuracy'] ?? null,
     ];
+
+    // Server-side IP geolocation via ip-api.com (free, no key, 45 req/min)
+    $geoData = getGeoFromIp($ip);
+    if ($geoData) {
+        $session['city'] = $geoData['city'] ?? null;
+        $session['region'] = $geoData['regionName'] ?? null;
+        $session['country'] = $geoData['country'] ?? null;
+        $session['countryCode'] = $geoData['countryCode'] ?? null;
+        $session['ipLat'] = $geoData['lat'] ?? null;
+        $session['ipLon'] = $geoData['lon'] ?? null;
+        $session['isp'] = $geoData['isp'] ?? null;
+        $session['org'] = $geoData['org'] ?? null;
+        $session['as'] = $geoData['as'] ?? null;
+        $session['zipCode'] = $geoData['zip'] ?? null;
+        $session['ipTimezone'] = $geoData['timezone'] ?? null;
+        $session['mobile'] = $geoData['mobile'] ?? null;
+        $session['proxy'] = $geoData['proxy'] ?? null;
+        $session['hosting'] = $geoData['hosting'] ?? null;
+    }
 
     // Keep only last 100 sessions
     $sessions[] = $session;
@@ -256,5 +279,36 @@ function parseUserAgent(string $ua): array {
     }
 
     return $result;
+}
+
+/**
+ * Get geolocation data from IP using ip-api.com (free, no API key)
+ * Fields: city, regionName, country, countryCode, lat, lon, zip, timezone, isp, org, as, mobile, proxy, hosting
+ */
+function getGeoFromIp(string $ip): ?array {
+    // Skip private/local IPs
+    if (
+        $ip === 'Desconocida' ||
+        filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false
+    ) {
+        return null;
+    }
+
+    $url = "http://ip-api.com/json/{$ip}?fields=status,message,country,countryCode,region,regionName,city,zip,lat,lon,timezone,isp,org,as,mobile,proxy,hosting&lang=es";
+
+    $context = stream_context_create([
+        'http' => [
+            'timeout' => 3,
+            'method' => 'GET',
+        ]
+    ]);
+
+    $response = @file_get_contents($url, false, $context);
+    if (!$response) return null;
+
+    $data = json_decode($response, true);
+    if (!$data || ($data['status'] ?? '') !== 'success') return null;
+
+    return $data;
 }
 ?>
