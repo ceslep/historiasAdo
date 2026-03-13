@@ -11,6 +11,7 @@ $defaultStats = [
     'searchCount' => 0,
     'pdfExportCount' => 0,
     'historyViewCount' => 0,
+    'appOpenCount' => 0,
     'lastActive' => null
 ];
 
@@ -58,6 +59,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 break;
             case 'trackHistoryView':
                 $stats['historyViewCount']++;
+                break;
+            case 'trackAppOpen':
+                $stats['appOpenCount']++;
                 break;
             case 'resetStats':
                 $stats = $defaultStats;
