@@ -64,7 +64,7 @@ export default defineConfig({
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         runtimeCaching: [
           {
-            urlPattern: /^https:\/\/api\..*/i,
+            urlPattern: /^https:\/\/(api|app)\..*/i,
             handler: "StaleWhileRevalidate",
             options: {
               cacheName: "api-cache",

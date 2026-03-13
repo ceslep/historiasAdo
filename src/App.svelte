@@ -85,6 +85,7 @@
   let searchTimeout: ReturnType<typeof setTimeout> | null = null;
 
   onMount(() => {
+    usageStore.trackAppOpen();
     cleanupStore = pacienteStore.inicializar();
     const checkLoading = setInterval(() => {
       if (!pacienteStore.isLoading) {
